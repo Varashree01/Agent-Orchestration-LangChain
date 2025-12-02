@@ -5,6 +5,7 @@ SkillStudy AI is an intelligent study assistant built using LangChain, LangGraph
 🚀 What’s Included :
 
 Week 1: Basic LLM setup using Gemini, prompt template, and a simple chain.
+
 Week 2: Zero-Shot style agent using Langchain,LangGraph, custom tools (greet, study_score), conversational memory, and an interactive console (main.py).
 
 🔧 Installation :
@@ -26,6 +27,7 @@ python main.py
 use_tool:greet|Yourname
 
 use_tool:study_score|4
+
 Ask anything like: “Explain recursion.”
 
 📄 License
