@@ -1,0 +1,4 @@
+# memory.py
+memory = {
+    "history": []
+}
