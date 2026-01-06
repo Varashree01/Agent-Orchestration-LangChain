@@ -1,0 +1,20 @@
+# --- Python Environment ---
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Secrets and Config ---
+.env
+
+# --- Node/Frontend ---
+node_modules/
+dist/
+build/
+.DS_Store
+
+# --- Tooling ---
+.vscode/
+.idea/

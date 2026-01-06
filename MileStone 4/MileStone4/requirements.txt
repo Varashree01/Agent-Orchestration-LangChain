@@ -1,0 +1,9 @@
+crewai>=0.28.0
+langchain>=0.1.0
+langchain-openai
+python-dotenv
+pyyaml
+duckduckgo-search
+yfinance
+pydantic>=2.0.0
+numpy>=1.26.0
