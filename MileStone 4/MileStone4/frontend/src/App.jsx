@@ -1,100 +1,253 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bot, User, Send, Moon, Sun, Plus, Zap, Calculator, Cloud, Scroll, Rocket, ListTodo } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiMenu, FiX, FiPlus, FiTrash2, FiMoon, FiSun, FiLogOut, FiEdit2 } from 'react-icons/fi';
+import LoginPage from './components/LoginPage';
+import ChatInterface from './components/ChatInterface';
+import { VarixLogo, AgentIcon } from './components/Logos';
+import { conversationStorage } from './utils/conversationStorage';
+import { useTheme } from './ThemeProvider';
 import './App.css';
 
-function VarixApp() {
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [activeAgent, setActiveAgent] = useState("supervisor");
-  const chatEndRef = useRef(null);
+export default function App() {
+  const { isDark, setIsDark } = useTheme();
+  const [user, setUser] = useState(() => {
+    return localStorage.getItem('varix_user') || null;
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversation, setActiveConversation] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [selectedAgent, setSelectedAgent] = useState('auto');
 
+  const agents = [
+    { id: 'auto', label: 'Auto (Supervisor)' },
+    { id: 'math_agent', label: 'Math' },
+    { id: 'poem_agent', label: 'Poem' },
+    { id: 'weather_agent', label: 'Weather' },
+    { id: 'launch_vehicle_agent', label: 'Rockets' },
+    { id: 'todoist_agent', label: 'Tasks' },
+  ];
+
+  // Load conversations when user logs in
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (user) {
+      const userConversations = conversationStorage.getConversations(user);
+      setConversations(userConversations);
+      if (userConversations.length === 0) {
+        // Create first conversation
+        const newConv = conversationStorage.createConversation(user);
+        setConversations([newConv]);
+        setActiveConversation(newConv.id);
+      } else {
+        setActiveConversation(userConversations[0].id);
+      }
+    }
+  }, [user]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
-    const userMsg = { role: "user", content: input };
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
+  const handleLogin = (username) => {
+    setUser(username);
+    localStorage.setItem('varix_user', username);
+  };
 
-    try {
-      const response = await fetch("http://127.0.0.1:11000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input, requested_agent: activeAgent }),
-      });
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.response }]);
-      if (data.agent_name) setActiveAgent(data.agent_name.toLowerCase());
-    } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Connectivity error." }]);
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('varix_user');
+    setActiveConversation(null);
+    setConversations([]);
+  };
+
+  const handleNewConversation = () => {
+    const newConv = conversationStorage.createConversation(user);
+    setConversations([newConv, ...conversations]);
+    setActiveConversation(newConv.id);
+  };
+
+  const handleDeleteConversation = (e, convId) => {
+    e.stopPropagation();
+    conversationStorage.deleteConversation(user, convId);
+    setConversations(conversations.filter(c => c.id !== convId));
+    if (activeConversation === convId) {
+      setActiveConversation(conversations.find(c => c.id !== convId)?.id || null);
     }
   };
 
+  const handleRenameConversation = (convId, newTitle) => {
+    conversationStorage.renameConversation(user, convId, newTitle);
+    setConversations(conversations.map(c => 
+      c.id === convId ? { ...c, title: newTitle } : c
+    ));
+    setEditingId(null);
+  };
+
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
-    <div className={`varix-interface ${isDarkMode ? 'dark' : 'light'}`}>
-      <aside className="varix-sidebar">
-        <div className="brand">
-          <Zap size={24} fill="#00f2ff" color="#00f2ff" />
-          <span>VARIX AI</span>
-        </div>
-        <button className="btn-new-chat" onClick={() => setMessages([])}>
-          <Plus size={18} /> New Session
-        </button>
-        <div className="agent-menu">
-          <p className="menu-label">Active Agents</p>
-          <div className={`menu-item ${activeAgent === 'math' ? 'active' : ''}`} onClick={() => setActiveAgent('math')}><Calculator size={18} /> Math Solver</div>
-          <div className={`menu-item ${activeAgent === 'weather' ? 'active' : ''}`} onClick={() => setActiveAgent('weather')}><Cloud size={18} /> Weather Sync</div>
-          <div className={`menu-item ${activeAgent === 'poem' ? 'active' : ''}`} onClick={() => setActiveAgent('poem')}><Scroll size={18} /> Poem Creator</div>
-          <div className={`menu-item ${activeAgent === 'launch' ? 'active' : ''}`} onClick={() => setActiveAgent('launch')}><Rocket size={18} /> Launch Tracker</div>
-          <div className={`menu-item ${activeAgent === 'todoist' ? 'active' : ''}`} onClick={() => setActiveAgent('todoist')}><ListTodo size={18} /> Todoist</div>
-        </div>
-      </aside>
-
-      <main className="varix-main">
-        <header className="varix-top-nav">
-          <button className="theme-toggle" onClick={() => setIsDarkMode(!isDarkMode)}>
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <div className="user-profile">
-            <div className="avatar">V</div>
-          </div>
-        </header>
-
-        <div className="chat-viewport">
-          {messages.length === 0 ? (
-            <div className="welcome-hero">
-              <h1 className="hero-gradient">Varix Intelligence</h1>
-              <p>How can I help you today?</p>
+    <div className={`app-container ${isDark ? 'dark' : 'light'} ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      {/* Sidebar */}
+      <AnimatePresence mode="wait">
+        {sidebarOpen && (
+          <motion.aside
+            className="sidebar"
+            initial={{ x: -300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -300, opacity: 0 }}
+            transition={{ type: 'tween', duration: 0.3 }}
+          >
+            <div className="sidebar-header">
+              <div className="sidebar-logo">
+                <VarixLogo size={28} />
+                <h1>VARIX</h1>
+              </div>
+              <button
+                className="icon-btn sidebar-close"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <FiX size={20} />
+              </button>
             </div>
-          ) : (
-            <div className="msg-container">
-              {messages.map((m, i) => (
-                <div key={i} className={`msg-row ${m.role}`}>
-                  <div className="msg-bubble">{m.content}</div>
+
+            <button className="new-chat-btn" onClick={handleNewConversation}>
+              <FiPlus size={18} />
+              New Chat
+            </button>
+
+            <div className="agents-section">
+              <p className="list-label">Agents</p>
+              <div className="agents-list">
+                {agents.map((agent) => (
+                  <button
+                    key={agent.id}
+                    className={`agent-item ${selectedAgent === agent.id ? 'active' : ''}`}
+                    onClick={() => setSelectedAgent(agent.id)}
+                    type="button"
+                  >
+                    {agent.id === 'auto' ? (
+                      <span className="agent-auto">AUTO</span>
+                    ) : (
+                      <AgentIcon agent={agent.id} size={18} />
+                    )}
+                    <span>{agent.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="conversations-list">
+              <p className="list-label">Conversations</p>
+              <AnimatePresence>
+                {conversations.map((conv) => (
+                  <motion.div
+                    key={conv.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className={`conversation-item ${activeConversation === conv.id ? 'active' : ''}`}
+                    onClick={() => setActiveConversation(conv.id)}
+                  >
+                    {editingId === conv.id ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onBlur={() => handleRenameConversation(conv.id, editTitle)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleRenameConversation(conv.id, editTitle);
+                          }
+                        }}
+                        className="edit-input"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <>
+                        <span className="conv-title">{conv.title}</span>
+                        <div className="conv-actions">
+                          <button
+                            className="icon-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingId(conv.id);
+                              setEditTitle(conv.title);
+                            }}
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button
+                            className="icon-btn delete"
+                            onClick={(e) => handleDeleteConversation(e, conv.id)}
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            <div className="sidebar-footer">
+              <div className="user-info">
+                <div className="user-avatar">
+                  {user.charAt(0).toUpperCase()}
                 </div>
-              ))}
-              <div ref={chatEndRef} />
+                <span>{user}</span>
+              </div>
+              <button className="icon-btn" onClick={() => setIsDark(!isDark)}>
+                {isDark ? <FiSun size={18} /> : <FiMoon size={18} />}
+              </button>
+              <button className="icon-btn logout" onClick={handleLogout}>
+                <FiLogOut size={18} />
+              </button>
             </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <main className="main-content">
+        <div className="header-bar">
+          {!sidebarOpen && (
+            <button
+              className="icon-btn menu-toggle"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <FiMenu size={24} />
+            </button>
+          )}
+          <div className="header-title">
+            <VarixLogo size={24} />
+            <h1>VARIX Intelligence</h1>
+          </div>
+          <div className="header-actions">
+            <button className="icon-btn" onClick={() => setIsDark(!isDark)}>
+              {isDark ? <FiSun size={18} /> : <FiMoon size={18} />}
+            </button>
+          </div>
+        </div>
+
+        <div className="chat-container">
+          {activeConversation && (
+            <ChatInterface
+              user={user}
+              conversationId={activeConversation}
+              selectedAgent={selectedAgent}
+              onMessageAdded={(message) => {
+                const updatedConv = conversationStorage.addMessage(user, activeConversation, message);
+                setConversations(conversations.map(c => 
+                  c.id === activeConversation ? updatedConv : c
+                ));
+              }}
+            />
           )}
         </div>
-
-        <footer className="varix-input-zone">
-          <div className="input-capsule">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={`Send a command to ${activeAgent}...`}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            />
-            <button className="btn-send" onClick={handleSend}><Send size={20} /></button>
-          </div>
-        </footer>
       </main>
     </div>
   );
 }
 
-export default VarixApp;
+
