@@ -114,7 +114,7 @@ npm run dev
 
 ## Visual Proof
 
-Add screenshots or a short GIF of:
+Added  screenshots of:
 
 - Supervisor routing decisions
 - Agent handoff sequence
@@ -142,5 +142,12 @@ Distributed under the **MIT License**.
 
 ## Acknowledgments
 
-A special thank you to my mentor, **Saadhana**, for her guidance and support in building this orchestration framework.
+A special thank you to my mentor Saadhana, for her guidance and support in building this orchestration framework.
+
+---
+
+## Author Information 
+
+Name : Varashree H A, 
+Email : varashree710@gmail.com
 
